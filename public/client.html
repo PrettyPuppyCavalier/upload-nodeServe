@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .mask {
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.1);
+            position: fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .phone-warp {
+            position: relative;
+            border: 1px solid #f2f2f2;
+            background-color: rgba(0, 0, 0, 0.1);
+            user-select: none; /* 禁止选择 */
+            -webkit-touch-callout: none; /* 禁止 iOS 长按链接/图像时显示操作表 */
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+        }
+
+        .phone-warp .header-menu {
+            width: calc(100% + 50px);
+            height: 50px;
+            top: -50px;
+            left: 0;
+            color: white;
+            cursor: move;
+            display: flex;
+            align-items: center;
+            position: absolute;
+            background-color: black;
+        }
+
+        .header-menu .close {
+            color: white;
+            cursor: pointer;
+            padding: 5px;
+            margin: 0 5px;
+            display: inline-block;
+        }
+
+        .phone-warp .phone {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            position: relative;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .phone .dot {
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 5px;
+            position: absolute;
+            border-radius: 50%;
+            background-color: red;
+        }
+
+        .phone-warp .right-menu {
+            width: 50px;
+            height: 100%;
+            top: 0;
+            right: -50px;
+            position: absolute;
+            text-align: center;
+            background-color: black;
+        }
+
+        .right-menu span {
+            color: white;
+            cursor: pointer;
+            display: block;
+            margin-bottom: 20px;
+        }
+
+        .right-menu .drag {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: nwse-resize;
+            background-color: #f2f2f2;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="mask" class="mask">
+    <div id="phoneWrap" class="phone-warp">
+        <div id="headerMenu" class="header-menu">
+            <span class="close">x</span>
+            <button id="reset">reset</button>
+        </div>
+        <div class="phone" id="swipeArea">
+            <h1 id="indicator">WebSocket</h1>
+            <div id="dot" class="dot"></div>
+        </div>
+        <div class="right-menu">
+            <span>+</span>
+            <span>-</span>
+            <span id="opRotate">rotate</span>
+            <span>home</span>
+            <span>back</span>
+            <span>menu</span>
+            <span>file</span>
+            <span>photo</span>
+            <span>tiktok</span>
+            <div class="drag"></div>
+        </div>
+    </div>
+</div>
+<script>
+    const dot = document.getElementById('dot')
+    const reset = document.getElementById('reset')
+    const indicator = document.getElementById('indicator')
+    const swipeArea = document.getElementById('swipeArea')
+    const headerMenu = document.getElementById('headerMenu')
+    const phoneWrap = document.getElementById('phoneWrap')
+    const drag = document.querySelector('.phone-warp .drag')
+
+    // op
+    const opRotate = document.getElementById('opRotate')
+
+    let isResizing = false
+    let touchStartX = 0
+    let touchStartY = 0
+    let touchStartTime = 0
+    let isLongPress = false
+    let longPressTimer = null
+    let swipeTriggered = false
+    let swipeDirection = null
+    let startX, startY, startWidth, startHeight, initialX, initialY, offsetX, offsetY
+
+    opRotate.addEventListener('click', function () {
+        phoneWrap.style.transform = 'rotate(90deg)'
+    })
+
+    // 初始宽度和高度
+    const initialWidth = 390
+    const initialHeight = 844
+
+    // 鼠标按下时记录初始位置和鼠标与被拖拽元素的偏移量
+    headerMenu.addEventListener('mousedown', function (e) {
+        initialX = e.clientX
+        initialY = e.clientY
+        offsetX = initialX - phoneWrap.getBoundingClientRect().left
+        offsetY = initialY - phoneWrap.getBoundingClientRect().top
+        // 开始监听鼠标移动事件
+        document.addEventListener('mousemove', movePhoneWrap)
+    })
+
+    // 鼠标移动时更新被拖拽元素的位置
+    function movePhoneWrap(e) {
+        const newX = e.clientX - offsetX
+        const newY = e.clientY - offsetY
+
+        // 设置被拖拽元素的新位置
+        phoneWrap.style.position = 'absolute'
+        phoneWrap.style.left = newX + 'px'
+        phoneWrap.style.top = newY + 'px'
+    }
+
+    // 鼠标释放时停止拖拽操作
+    document.addEventListener('mouseup', function () {
+        document.removeEventListener('mousemove', movePhoneWrap)
+    })
+
+    // 添加鼠标按下事件监听器
+    swipeArea.addEventListener('mousedown', handleMouseDown)
+
+    // 添加鼠标移动和松开事件监听器到 document 上
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    startWidth = 390
+    startHeight = 844
+    phoneWrap.style.width = startWidth + 'px'
+    phoneWrap.style.height = startHeight + 'px'
+
+    drag.addEventListener('mousedown', (e) => {
+        isResizing = true
+        startX = e.clientX
+        startY = e.clientY
+        startWidth = phoneWrap.offsetWidth
+        startHeight = phoneWrap.offsetHeight
+    })
+
+    document.addEventListener('mousemove', (e) => {
+        if (isResizing) {
+            const deltaX = e.clientX - startX
+            const deltaY = e.clientY - startY
+            const newWidth = startWidth + deltaX
+            const newHeight = startHeight + deltaY
+
+            // 保持宽高比例不变
+            const aspectRatio = startWidth / startHeight
+            const newAspectRatio = newWidth / newHeight
+            if (newAspectRatio > aspectRatio) {
+                phoneWrap.style.width = newHeight * aspectRatio + 'px'
+                phoneWrap.style.height = newHeight + 'px'
+            }
+            else {
+                phoneWrap.style.width = newWidth + 'px'
+                phoneWrap.style.height = newWidth / aspectRatio + 'px'
+            }
+        }
+    })
+
+    document.addEventListener('mouseup', () => {
+        isResizing = false
+    })
+
+    let ws = new WebSocketCustom() // 初始化socket对象
+
+    // 重置
+    reset.addEventListener('click', function (event) {
+        phoneWrap.style.width = initialWidth + 'px'
+        phoneWrap.style.height = initialHeight + 'px'
+    })
+
+    function handleMouseDown(event) {
+        if (event.target !== swipeArea) return // 确保鼠标按下事件发生在滑动区域内
+
+        touchStartX = event.clientX
+        touchStartY = event.clientY
+        touchStartTime = Date.now()
+
+        // 启动长按定时器
+        longPressTimer = setTimeout(() => {
+            // 长按动作
+            if (!swipeTriggered) {
+                indicator.textContent = '长按'
+                isLongPress = true
+                console.log('Long press')
+                sendMsg({ type: 'longPress' })
+                // 长按事件触发后取消鼠标移动事件的监听
+                document.removeEventListener('mousemove', handleMouseMove)
+            }
+        }, 500) // 这里设置长按时间阈值，单位为毫秒
+    }
+
+    function handleMouseUp(event) {
+        // 清除长按定时器
+        clearTimeout(longPressTimer)
+        if (isLongPress) {
+            document.addEventListener('mousemove', handleMouseMove)
+        }
+
+        if (touchStartX === 0 || touchStartY === 0) return // 确保鼠标按下事件已发生
+
+        const touchEndX = event.clientX
+        const touchEndY = event.clientY
+        const touchEndTime = Date.now()
+        const touchDuration = touchEndTime - touchStartTime
+        const deltaX = touchEndX - touchStartX
+        const deltaY = touchEndY - touchStartY
+
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+
+        if (touchDuration < 300 && distance < 20) {
+            // 短按（轻触）
+            if (!swipeTriggered) {
+                const rect = swipeArea.getBoundingClientRect()
+                const w = swipeArea.offsetWidth
+                const h = swipeArea.offsetHeight
+                const x = Math.max(0, event.clientX - rect.left)
+                const y = Math.max(0, event.clientY - rect.top)
+
+                // 计算宽度和高度的比例
+                const ratioX = x / w
+                const ratioY = y / h
+
+                // 根据比例计算新的 x 和 y 坐标
+                const originalX = ratioX * initialWidth
+                const originalY = ratioY * initialHeight
+
+                dot.style.top = originalY + 'px'
+                dot.style.left = originalX + 'px'
+
+                indicator.textContent = '点击'
+                console.log('Short click (tap)')
+                sendMsg({ type: 'click', x: originalX.toFixed(2), y: originalY.toFixed(2) })
+            }
+        }
+
+        // 通知鼠标松开事件
+        if (swipeTriggered) {
+            console.log('Mouse up', swipeDirection)
+            sendMsg({ type: swipeDirection })
+        }
+
+        // 重置
+        touchStartX = 0
+        touchStartY = 0
+        touchStartTime = 0
+        isLongPress = false
+        swipeTriggered = false
+        swipeDirection = null
+    }
+
+    function handleMouseMove(event) {
+        if (touchStartX === 0 || touchStartY === 0) return // 确保鼠标按下事件已发生
+
+        const deltaX = event.clientX - touchStartX
+        const deltaY = event.clientY - touchStartY
+
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (deltaX > 0) {
+                // 右滑
+                indicator.textContent = '右滑'
+                swipeTriggered = true
+                swipeDirection = 'right'
+            }
+            else {
+                // 左滑
+                indicator.textContent = '左滑'
+                swipeTriggered = true
+                swipeDirection = 'left'
+            }
+        }
+        else {
+            if (deltaY > 0) {
+                // 下滑
+                indicator.textContent = '下滑'
+                swipeTriggered = true
+                swipeDirection = 'down'
+            }
+            else {
+                // 上滑
+                indicator.textContent = '上滑'
+                swipeTriggered = true
+                swipeDirection = 'up'
+            }
+        }
+    }
+
+    // 发布消息
+    function sendMsg(data) {
+        console.log('发送消息', data)
+        if (!data) return false
+        ws.send(JSON.stringify(data))
+    }
+
+    /**
+     * 连接WebSocket方法
+     * @returns
+     */
+    function WebSocketCustom() {
+        let wsCustom = new WebSocket('ws://localhost:3101')
+        // 连接建立时触发
+        wsCustom.onopen = () => {
+            console.log('连接成功')
+        }
+
+        // 连接关闭时触发
+        wsCustom.onclose = () => {
+            console.log('连接关闭')
+        }
+
+        // 通信发生错误时触发
+        wsCustom.onerror = () => {
+            console.log('通信发生错误')
+
+        }
+
+        // 客户端接收服务端数据时触发
+        wsCustom.onmessage = (ms) => {
+            console.log('客户端接收服务端数据时触发', ms)
+        }
+
+        return wsCustom
+    }
+</script>
+</body>
+</html>

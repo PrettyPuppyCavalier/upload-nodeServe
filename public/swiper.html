@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Swipe and Long Press</title>
+    <style>
+        #swipeArea {
+            width: 390px;
+            height: 844px;
+            background-color: lightgray;
+            margin: 50px auto;
+            position: relative;
+        }
+
+        #indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="swipeArea">
+    <div id="indicator">Swipe Here</div>
+</div>
+
+<script>
+    const swipeArea = document.getElementById('swipeArea')
+    const indicator = document.getElementById('indicator')
+
+    let touchStartX = 0
+    let touchStartY = 0
+    let touchStartTime = 0
+    let isLongPress = false
+    let longPressTimer = null
+    let swipeTriggered = false
+    let swipeDirection = null
+
+    // 添加鼠标按下事件监听器
+    swipeArea.addEventListener('mousedown', handleMouseDown)
+
+    // 添加鼠标移动和松开事件监听器到 document 上
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    function handleMouseDown(event) {
+        if (event.target !== swipeArea) return // 确保鼠标按下事件发生在滑动区域内
+
+        touchStartX = event.clientX
+        touchStartY = event.clientY
+        touchStartTime = Date.now()
+
+        // 启动长按定时器
+        longPressTimer = setTimeout(() => {
+            // 长按动作
+            if (!swipeTriggered) {
+                indicator.textContent = '长按'
+                isLongPress = true
+                console.log('Long press')
+                // 长按事件触发后取消鼠标移动事件的监听
+                document.removeEventListener('mousemove', handleMouseMove)
+            }
+        }, 500) // 这里设置长按时间阈值，单位为毫秒
+    }
+
+    function handleMouseUp(event) {
+        console.log('Mouse up', swipeDirection)
+        // 清除长按定时器
+        clearTimeout(longPressTimer)
+        if(isLongPress){
+            document.addEventListener('mousemove', handleMouseMove)
+        }
+
+        if (touchStartX === 0 || touchStartY === 0) return // 确保鼠标按下事件已发生
+
+        const touchEndX = event.clientX
+        const touchEndY = event.clientY
+        const touchEndTime = Date.now()
+        const touchDuration = touchEndTime - touchStartTime
+        const deltaX = touchEndX - touchStartX
+        const deltaY = touchEndY - touchStartY
+
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+
+        if (touchDuration < 300 && distance < 20) {
+            // 短按（轻触）
+            if (!swipeTriggered) {
+                indicator.textContent = '点击'
+                console.log('Short click (tap)')
+            }
+        }
+
+        // 通知鼠标松开事件
+        if (!swipeTriggered) {
+            console.log('Mouse up')
+        }
+
+        // 重置
+        touchStartX = 0
+        touchStartY = 0
+        touchStartTime = 0
+        swipeTriggered = false
+        swipeDirection = null
+    }
+
+    function handleMouseMove(event) {
+        if (touchStartX === 0 || touchStartY === 0) return // 确保鼠标按下事件已发生
+
+        const deltaX = event.clientX - touchStartX
+        const deltaY = event.clientY - touchStartY
+
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (deltaX > 0) {
+                // 右滑
+                indicator.textContent = '右滑'
+                swipeTriggered = true
+                swipeDirection = 'right'
+            }
+            else {
+                // 左滑
+                indicator.textContent = '左滑'
+                swipeTriggered = true
+                swipeDirection = 'left'
+            }
+        }
+        else {
+            if (deltaY > 0) {
+                // 下滑
+                indicator.textContent = '下滑'
+                swipeTriggered = true
+                swipeDirection = 'down'
+            }
+            else {
+                // 上滑
+                indicator.textContent = '上滑'
+                swipeTriggered = true
+                swipeDirection = 'up'
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
