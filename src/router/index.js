@@ -8,7 +8,7 @@
 
 const Router = require('koa-router')
 const router = new Router()
-const ws = require('./ws')
+const upload = require('./upload')
 
 // 在路由之前添加错误处理中间件
 router.use(async (ctx, next) => {
@@ -23,10 +23,10 @@ router.use(async (ctx, next) => {
 })
 
 router.all('/', async (ctx) => {
-    ctx.body = 'hello ws-node'
+    ctx.body = 'hello upload-node-server'
     // await next()
 })
 
-router.use(ws.routes(), ws.allowedMethods())
+router.use(upload.routes(), upload.allowedMethods())
 
 module.exports = router
