@@ -8,7 +8,6 @@
 
 const Fs = require("fs")
 const Path = require("path")
-const {uploadFileChunk} = require("../controller/upload")
 
 class UploadService {
     /**
